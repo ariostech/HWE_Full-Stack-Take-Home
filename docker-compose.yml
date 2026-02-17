@@ -17,7 +17,6 @@ services:
       timeout: 3s
       retries: 20
 
-  # Optional: candidates can choose to use it for idempotency keys, caching, etc.
   redis:
     image: redis:7-alpine
     container_name: emissions_redis
@@ -31,8 +30,45 @@ services:
       timeout: 3s
       retries: 20
 
-  # Optional: DB admin UI for reviewers/candidates. Safe to keep.
-  # If you don't want extra surface area, remove this service.
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: emissions_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-emissions}:${POSTGRES_PASSWORD:-emissions}@postgres:5432/${POSTGRES_DB:-emissions}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGIN: http://localhost:3000
+      SEED_DB: ${SEED_DB:-true}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles: ["full"]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    container_name: emissions_web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
+    profiles: ["full"]
+
   pgadmin:
     image: dpage/pgadmin4:8
     container_name: emissions_pgadmin

@@ -1,0 +1,11 @@
+node_modules
+.git
+.next
+dist
+coverage
+.turbo
+*.md
+.env
+.env.local
+.env.*.local
+.vscode
