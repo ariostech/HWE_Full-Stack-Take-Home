@@ -2,26 +2,16 @@ FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 WORKDIR /app
 
-FROM base AS deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
-COPY packages/shared/package.json ./packages/shared/package.json
-COPY apps/api/package.json ./apps/api/package.json
-RUN pnpm install --frozen-lockfile
-
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
+RUN pnpm install --frozen-lockfile
 RUN pnpm --filter api build
 
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/src/database/migrations ./apps/api/src/database/migrations
 COPY packages/shared ./packages/shared

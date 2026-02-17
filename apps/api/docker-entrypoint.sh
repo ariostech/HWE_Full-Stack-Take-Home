@@ -11,4 +11,4 @@ if [ "$SEED_DB" = "true" ]; then
 fi
 
 echo "==> Starting API server..."
-node dist/main
+npx tsx dist/main
